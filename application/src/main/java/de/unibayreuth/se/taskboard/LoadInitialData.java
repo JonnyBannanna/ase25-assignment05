@@ -1,6 +1,8 @@
 package de.unibayreuth.se.taskboard;
 
 import de.unibayreuth.se.taskboard.business.domain.Task;
+import de.unibayreuth.se.taskboard.business.domain.User;
+import de.unibayreuth.se.taskboard.business.ports.UserService;
 import de.unibayreuth.se.taskboard.business.ports.TaskService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -18,23 +20,23 @@ import java.util.List;
 @Slf4j
 @Profile("dev")
 class LoadInitialData implements InitializingBean {
+    // Fix this class after resolving the other TODOs.
     private final TaskService taskService;
-    // TODO: Fix this class after resolving the other TODOs.
-    //private final UserService userService;
+    private final UserService userService;
 
     @Override
     public void afterPropertiesSet() {
         log.info("Deleting existing data...");
-        //userService.clear();
+        userService.clear();
         taskService.clear();
         log.info("Loading initial data...");
-        //List<User> users = TestFixtures.createUsers(userService);
+        List<User> users = TestFixtures.createUsers(userService);
         List<Task> tasks = TestFixtures.createTasks(taskService);
         Task task1 = tasks.getFirst();
-        //task1.setAssigneeId(users.getFirst().getId());
+        task1.setAssigneeId(users.getFirst().getId());
         taskService.upsert(task1);
         Task task2 = tasks.getLast();
-        //task2.setAssigneeId(users.getLast().getId());
+        task2.setAssigneeId(users.getLast().getId());
         taskService.upsert(task2);
     }
 }

@@ -1,8 +1,11 @@
 package de.unibayreuth.se.taskboard;
 
 import de.unibayreuth.se.taskboard.api.dtos.TaskDto;
+import de.unibayreuth.se.taskboard.api.dtos.UserDto;
 import de.unibayreuth.se.taskboard.api.mapper.TaskDtoMapper;
+import de.unibayreuth.se.taskboard.api.mapper.UserDtoMapper;
 import de.unibayreuth.se.taskboard.business.domain.Task;
+import de.unibayreuth.se.taskboard.business.domain.User;
 import io.restassured.http.ContentType;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -13,9 +16,13 @@ import static io.restassured.RestAssured.given;
 import static io.restassured.RestAssured.when;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.hasSize;
+import static org.junit.Assert.assertEquals;
 
 
 public class TaskBoardSystemTests extends AbstractSystemTest {
+
+    @Autowired
+    private UserDtoMapper userDtoMapper;
 
     @Autowired
     private TaskDtoMapper taskDtoMapper;
@@ -65,5 +72,59 @@ public class TaskBoardSystemTests extends AbstractSystemTest {
 
     }
 
-    //TODO: Add at least one test for each new endpoint in the users controller (the create endpoint can be tested as part of the other endpoints).
+    // Add at least one test for each new endpoint in the users controller (the create endpoint can be tested as part of the other endpoints).
+    @Test
+    void getAllCreatedUsers() {
+        // NOTE: Lets be honest here, I've simply pasted the "getAllCreatedTasks" test from above and adjusted them to User instead of Task
+        List<User> createdUsers = TestFixtures.createUsers(userService);
+
+        List<User> retrievedUsers = given()
+            .contentType(ContentType.JSON)
+            .when()
+            .get("/api/users")
+            .then()
+            .statusCode(200)
+            .body(".", hasSize(createdUsers.size()))
+            .and()
+            .extract().jsonPath().getList("$", UserDto.class)
+            .stream()
+            .map(userDtoMapper::toBusiness)
+            .toList();
+
+        assertThat(retrievedUsers)
+            .usingRecursiveFieldByFieldElementComparatorIgnoringFields("createdAt") // prevent issues due to differing timestamps after conversions
+            .containsExactlyInAnyOrderElementsOf(createdUsers);
+    }
+
+    @Test
+    void getUserById() {
+        User createdUser = TestFixtures.createUsers(userService).getFirst();
+
+        UserDto retrievedUserDto = given()
+            .contentType(ContentType.JSON)
+            .when()
+            .get("/api/users/{id}", createdUser.getId())    // method returns a dto
+            .then()
+            .statusCode(200)
+            .extract().as(UserDto.class);
+
+        // Map dto to business object
+        User retrievedUser = userDtoMapper.toBusiness(retrievedUserDto);
+
+        assertEquals(retrievedUser.getId(), createdUser.getId());
+        assertThat(retrievedUser.getName()).isEqualTo(createdUser.getName());
+    }
+
+    @Test
+    void createUser() {
+        // NOTE: Lets be honest here, I've simply pasted some of the "createAndDeleteTask" test from above and adjusted them to User instead of Task
+        User createdUser = userService.create(
+            TestFixtures.createUsers(userService).getFirst()
+        );
+
+        when()
+            .get("/api/users/{id}", createdUser.getId())
+            .then()
+            .statusCode(200);
+    }
 }
